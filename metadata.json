@@ -1,0 +1,7 @@
+{
+  "name": "Career Coach 职场教练",
+  "description": "Upload your CV and Job Description to get tailored advice, generate ATS-friendly and creative versions, and practice with a real-time AI interviewer.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
