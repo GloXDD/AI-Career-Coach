@@ -1,6 +1,18 @@
 
 export type AppLanguage = 'en' | 'fr' | 'zh';
 
+export type ExperienceLevel = 'entry' | 'mid' | 'senior' | 'executive' | '';
+export type CompanySize = 'startup' | 'sme' | 'corporate' | '';
+
+export interface SearchPreferences {
+  location: string;
+  role: string;
+  keywords: string;
+  industry: string;
+  experienceLevel: ExperienceLevel;
+  companySize: CompanySize;
+}
+
 export interface Improvement {
   category: string;
   suggestion: string;

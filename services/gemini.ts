@@ -1,8 +1,8 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, DiscoveryResult, AppLanguage, InterviewFeedback } from "../types";
+import { AnalysisResult, DiscoveryResult, AppLanguage, InterviewFeedback, SearchPreferences } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
   return new Promise((resolve, reject) => {
@@ -22,7 +22,7 @@ export const fileToGenerativePart = async (file: File): Promise<{ inlineData: { 
   });
 };
 
-export const discoverJobs = async (cvFile: File, location: string, careerFocus: string, language: AppLanguage): Promise<DiscoveryResult> => {
+export const discoverJobs = async (cvFile: File, prefs: SearchPreferences, language: AppLanguage): Promise<DiscoveryResult> => {
   const cvPart = await fileToGenerativePart(cvFile);
   
   const languageNames = {
@@ -33,6 +33,16 @@ export const discoverJobs = async (cvFile: File, location: string, careerFocus: 
 
   const targetLanguage = languageNames[language];
 
+  // Constructing a detailed prompt based on preferences
+  const preferencesString = `
+    Location: ${prefs.location || 'Global/Remote'}
+    Desired Role: ${prefs.role || 'Based on CV analysis'}
+    Keywords: ${prefs.keywords || 'N/A'}
+    Industry: ${prefs.industry || 'N/A'}
+    Experience Level: ${prefs.experienceLevel || 'Based on CV'}
+    Company Size: ${prefs.companySize || 'Any'}
+  `;
+
   const prompt = `
     You are an elite AI Career Coach and Recruitment Specialist. 
     
@@ -40,14 +50,20 @@ export const discoverJobs = async (cvFile: File, location: string, careerFocus: 
     Analyze the attached CV to identify the candidate's core skills, experience level, and unique value proposition.
     
     PHASE 2: STRATEGIC CAREER PATHS
-    Based on the analysis, define 3 distinct, viable career paths:
+    Based on the analysis, define 4 distinct, viable career paths:
     1. "The Logical Step" (Direct progression)
     2. "The Strategic Pivot" (Transferable skills to a new domain)
     3. "The Ambitious Reach" (High growth potential)
+    4. "The Emerging Opportunity" (New market trends, AI, or specific niche)
 
     PHASE 3: MARKET INTELLIGENCE (SEARCH EXECUTION)
-    Use Google Search to find ACTUAL, LIVE job listings in "${location}" (or 'Remote') that match these paths or the user's specific focus: "${careerFocus}".
-    - You MUST perform specific searches for job titles + location (e.g., "Senior Product Manager jobs Paris", "Software Engineer hiring London").
+    Use Google Search to find ACTUAL, LIVE job listings that match the user's specific preferences:
+    ${preferencesString}
+    
+    - You MUST perform specific searches. Example search queries to use: 
+      "${prefs.role} jobs in ${prefs.location} ${prefs.industry} ${prefs.keywords}"
+      "${prefs.role} hiring ${prefs.location} ${prefs.companySize} companies"
+      
     - Filter for listings that appear to be currently active (posted recently).
     - Look for credible sources like company career pages, LinkedIn, Indeed, Welcome to the Jungle, or major job boards.
     
@@ -57,7 +73,7 @@ export const discoverJobs = async (cvFile: File, location: string, careerFocus: 
     CRITICAL RULES FOR "foundJobs":
     - **VALIDITY**: ONLY include jobs found in the search results. DO NOT fabricate or hallucinate jobs.
     - **SOURCE**: You MUST include the URL found in the search result.
-    - **QUALITY**: Select the top 4-6 most relevant real opportunities.
+    - **QUANTITY**: Find at least 8-12 relevant, real opportunities. Broaden your search if necessary to meet this quantity.
     
     LANGUAGE RULE:
     - The "marketInsights", "title", "description" and "matchReason" fields MUST be written in ${targetLanguage}.
@@ -70,7 +86,7 @@ export const discoverJobs = async (cvFile: File, location: string, careerFocus: 
       "foundJobs": [
         { "title": "string", "company": "string", "location": "string", "snippet": "string", "url": "string" }
       ],
-      "marketInsights": "string (A brief 2-3 sentence executive summary of the current job market for this profile in this location)"
+      "marketInsights": "string (A brief 2-3 sentence executive summary of the current job market for this profile in this location, mentioning how well it aligns with their industry/size preferences)"
     }
   `;
 

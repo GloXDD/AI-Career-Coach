@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Upload, CheckCircle, Sparkles, ChevronRight, RefreshCw, Mic, AlertCircle, ArrowRight, User, Target, BarChart3, MoveRight, MapPin, Search, Compass, ExternalLink, Globe, Star, MessageSquare } from 'lucide-react';
+import { Upload, CheckCircle, Sparkles, ChevronRight, RefreshCw, Mic, AlertCircle, ArrowRight, User, Target, BarChart3, MoveRight, MapPin, Search, Compass, ExternalLink, Globe, Star, MessageSquare, Filter, Briefcase, Building2, TrendingUp, Hash } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { analyzeCV, discoverJobs, generateInterviewFeedback } from './services/gemini';
-import { AnalysisResult, AppState, DiscoveryResult, JobOpportunity, AppLanguage, InterviewFeedback } from './types';
+import { AnalysisResult, AppState, DiscoveryResult, JobOpportunity, AppLanguage, InterviewFeedback, SearchPreferences } from './types';
 import InterviewSession from './components/InterviewSession';
 import { translations } from './translations';
 
@@ -12,8 +12,17 @@ const App: React.FC = () => {
   const [interviewLanguage, setInterviewLanguage] = useState<AppLanguage>('en');
   const [appState, setAppState] = useState<AppState>(AppState.ONBOARDING);
   const [cvFile, setCvFile] = useState<File | null>(null);
-  const [location, setLocation] = useState<string>('');
-  const [careerFocus, setCareerFocus] = useState<string>('');
+  
+  // Search Preferences State
+  const [searchPrefs, setSearchPrefs] = useState<SearchPreferences>({
+    location: '',
+    role: '',
+    keywords: '',
+    industry: '',
+    experienceLevel: '',
+    companySize: ''
+  });
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   
   // Data States
   const [discoveryResult, setDiscoveryResult] = useState<DiscoveryResult | null>(null);
@@ -44,6 +53,10 @@ const App: React.FC = () => {
     }
   };
 
+  const updateSearchPref = (field: keyof SearchPreferences, value: string) => {
+    setSearchPrefs(prev => ({ ...prev, [field]: value }));
+  };
+
   const startDiscovery = async () => {
     if (!cvFile) {
       setError(t.error_no_cv);
@@ -54,8 +67,8 @@ const App: React.FC = () => {
     setError(null);
     
     try {
-      // Pass the current app language to the service
-      const result = await discoverJobs(cvFile, location, careerFocus, language);
+      // Pass the preferences object
+      const result = await discoverJobs(cvFile, searchPrefs, language);
       setDiscoveryResult(result);
       setAppState(AppState.DISCOVERY);
     } catch (err: any) {
@@ -122,6 +135,7 @@ const App: React.FC = () => {
      setSelectedJob(null);
      setInterviewFeedback(null);
      setError(null);
+     // Optional: Keep preferences or reset them
   };
 
   const toggleLanguage = () => {
@@ -247,26 +261,94 @@ const App: React.FC = () => {
                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-black text-white text-xs font-bold">2</span>
                    <label className="text-sm font-bold uppercase tracking-widest text-zinc-900">{t.step_2}</label>
                 </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder={t.placeholder_location}
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 rounded-xl border border-zinc-200 focus:border-black focus:ring-1 focus:ring-black outline-none bg-zinc-50 focus:bg-white"
-                    />
+                <div className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="relative">
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                      <input 
+                        type="text" 
+                        placeholder={t.placeholder_location}
+                        value={searchPrefs.location}
+                        onChange={(e) => updateSearchPref('location', e.target.value)}
+                        className="w-full pl-12 pr-4 py-4 rounded-xl border border-zinc-200 focus:border-black focus:ring-1 focus:ring-black outline-none bg-zinc-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="relative">
+                      <Compass className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                      <input 
+                        type="text" 
+                        placeholder={t.placeholder_role}
+                        value={searchPrefs.role}
+                        onChange={(e) => updateSearchPref('role', e.target.value)}
+                        className="w-full pl-12 pr-4 py-4 rounded-xl border border-zinc-200 focus:border-black focus:ring-1 focus:ring-black outline-none bg-zinc-50 focus:bg-white"
+                      />
+                    </div>
                   </div>
-                   <div className="relative">
-                    <Compass className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder={t.placeholder_role}
-                      value={careerFocus}
-                      onChange={(e) => setCareerFocus(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 rounded-xl border border-zinc-200 focus:border-black focus:ring-1 focus:ring-black outline-none bg-zinc-50 focus:bg-white"
-                    />
+
+                  {/* Advanced Filters Toggle */}
+                  <div className="pt-2">
+                    <button 
+                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                      className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-black transition-colors"
+                    >
+                      <Filter size={14} /> {t.toggle_advanced} {showAdvancedFilters ? '-' : '+'}
+                    </button>
+                    
+                    {showAdvancedFilters && (
+                      <div className="grid md:grid-cols-2 gap-4 mt-4 animate-fade-in p-4 border border-zinc-100 rounded-xl bg-zinc-50/50">
+                        {/* Keyword Filter */}
+                        <div className="relative">
+                           <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                           <input 
+                             type="text" 
+                             placeholder={t.placeholder_keywords}
+                             value={searchPrefs.keywords}
+                             onChange={(e) => updateSearchPref('keywords', e.target.value)}
+                             className="w-full pl-12 pr-4 py-3 rounded-lg border border-zinc-200 focus:border-black outline-none bg-white text-sm"
+                           />
+                        </div>
+                        {/* Industry Filter */}
+                        <div className="relative">
+                           <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                           <input 
+                             type="text" 
+                             placeholder={t.placeholder_industry}
+                             value={searchPrefs.industry}
+                             onChange={(e) => updateSearchPref('industry', e.target.value)}
+                             className="w-full pl-12 pr-4 py-3 rounded-lg border border-zinc-200 focus:border-black outline-none bg-white text-sm"
+                           />
+                        </div>
+                        {/* Experience Level */}
+                        <div className="relative">
+                          <TrendingUp className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                          <select 
+                            value={searchPrefs.experienceLevel}
+                            onChange={(e) => updateSearchPref('experienceLevel', e.target.value)}
+                            className="w-full pl-12 pr-4 py-3 rounded-lg border border-zinc-200 focus:border-black outline-none bg-white text-sm appearance-none cursor-pointer text-zinc-600"
+                          >
+                            <option value="">{t.label_experience}: {t.any}</option>
+                            <option value="entry">{t.opt_exp_entry}</option>
+                            <option value="mid">{t.opt_exp_mid}</option>
+                            <option value="senior">{t.opt_exp_senior}</option>
+                            <option value="executive">{t.opt_exp_exec}</option>
+                          </select>
+                        </div>
+                        {/* Company Size */}
+                         <div className="relative">
+                          <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                          <select 
+                            value={searchPrefs.companySize}
+                            onChange={(e) => updateSearchPref('companySize', e.target.value)}
+                            className="w-full pl-12 pr-4 py-3 rounded-lg border border-zinc-200 focus:border-black outline-none bg-white text-sm appearance-none cursor-pointer text-zinc-600"
+                          >
+                            <option value="">{t.label_company_size}: {t.any}</option>
+                            <option value="startup">{t.opt_size_startup}</option>
+                            <option value="sme">{t.opt_size_sme}</option>
+                            <option value="corporate">{t.opt_size_corp}</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -299,7 +381,7 @@ const App: React.FC = () => {
                     <p className="text-zinc-500">{discoveryResult.marketInsights}</p>
                  </div>
                  <div className="flex items-center gap-2 text-sm text-zinc-400 font-mono border border-zinc-100 px-3 py-1 rounded bg-zinc-50">
-                    <MapPin size={14} /> {location || 'Global'}
+                    <MapPin size={14} /> {searchPrefs.location || 'Global'}
                  </div>
               </div>
 
@@ -308,7 +390,7 @@ const App: React.FC = () => {
                  <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400 mb-6 flex items-center gap-2">
                     <Compass size={16} /> {t.suggested_paths}
                  </h3>
-                 <div className="grid md:grid-cols-3 gap-6">
+                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {discoveryResult.suggestedPaths.map((path, idx) => (
                        <div key={idx} className="bg-black text-white p-6 rounded-xl flex flex-col justify-between group hover:-translate-y-1 transition-transform duration-300">
                           <div>
@@ -329,18 +411,18 @@ const App: React.FC = () => {
                  <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400 mb-6 flex items-center gap-2">
                     <Search size={16} /> {t.live_opportunities}
                  </h3>
-                 <div className="grid gap-4">
+                 <div className="grid md:grid-cols-2 gap-4">
                     {discoveryResult.foundJobs.map((job, idx) => (
-                       <div key={idx} className="bg-white border border-zinc-200 p-6 rounded-xl hover:border-black transition-all group flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
-                          <div className="flex-1 space-y-2">
-                             <div className="flex flex-wrap items-center gap-3">
-                                <h4 className="font-bold text-lg">{job.title}</h4>
+                       <div key={idx} className="bg-white border border-zinc-200 p-6 rounded-xl hover:border-black transition-all group flex flex-col justify-between h-full">
+                          <div className="space-y-4 mb-6">
+                             <div className="flex flex-wrap items-center gap-2 justify-between">
+                                <h4 className="font-bold text-lg line-clamp-1">{job.title}</h4>
                                 <span className="bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded text-xs font-bold uppercase whitespace-nowrap">{job.company}</span>
                              </div>
                              <p className="text-sm text-zinc-500 flex items-center gap-4">
                                 <span className="flex items-center gap-1"><MapPin size={12} /> {job.location}</span>
                              </p>
-                             <p className="text-sm text-zinc-600 line-clamp-2 max-w-2xl">{job.snippet}</p>
+                             <p className="text-sm text-zinc-600 line-clamp-3">{job.snippet}</p>
                              {job.url ? (
                                <a href={job.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 font-medium">
                                  {t.view_listing} <ExternalLink size={10} />
@@ -351,14 +433,14 @@ const App: React.FC = () => {
                           </div>
                           <button 
                              onClick={() => startAnalysis(job)}
-                             className="shrink-0 bg-white border-2 border-black text-black px-6 py-3 rounded-lg font-bold text-sm hover:bg-black hover:text-white transition-colors flex items-center gap-2 w-full md:w-auto justify-center"
+                             className="w-full bg-white border-2 border-black text-black px-6 py-3 rounded-lg font-bold text-sm hover:bg-black hover:text-white transition-colors flex items-center justify-center gap-2"
                           >
                              {t.btn_improve_cv} <ArrowRight size={16} />
                           </button>
                        </div>
                     ))}
                     {discoveryResult.foundJobs.length === 0 && (
-                      <div className="text-center py-12 bg-zinc-50 rounded-xl border border-dashed border-zinc-300">
+                      <div className="text-center py-12 bg-zinc-50 rounded-xl border border-dashed border-zinc-300 md:col-span-2">
                         <p className="text-zinc-500">{t.no_jobs_found}</p>
                       </div>
                     )}
